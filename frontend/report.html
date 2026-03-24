@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MammAI Clinical Report – RPT-2503-001</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Outfit', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f5f7fa; color: #1a1a2e; }
+
+    /* Print button bar — hidden on print */
+    .action-bar {
+      background: #0a0a0a;
+      padding: 12px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 12px;
+    }
+    .action-bar .logo { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 800; font-size: 16px; }
+    .logo-badge { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #2dd4bf, #d9f99d); display: flex; align-items: center; justify-content: center; font-weight: 900; color: #0a0a0a; font-size: 13px; }
+    .action-bar .btns { display: flex; gap: 10px; }
+    .btn-print { background: linear-gradient(135deg, #2dd4bf, #14b8a6); color: #0a0a0a; font-weight: 800; border: none; padding: 10px 22px; border-radius: 10px; cursor: pointer; font-size: 14px; font-family: 'Outfit', sans-serif; }
+    .btn-close { border: 1px solid #2dd4bf; color: #2dd4bf; background: transparent; padding: 10px 22px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; font-family: 'Outfit', sans-serif; }
+    .btn-print:hover { box-shadow: 0 0 20px rgba(45,212,191,0.4); }
+
+    /* Report wrapper */
+    .report-wrapper { max-width: 860px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.12); }
+
+    /* Header */
+    .report-header { background: #0a0a0a; padding: 40px; color: #fff; position: relative; overflow: hidden; }
+    .report-header::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 80% at 100% 50%, rgba(45,212,191,0.12), transparent); }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
+    .report-title { font-size: 13px; font-weight: 700; color: #2dd4bf; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+    .report-id { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .report-sub { font-size: 14px; color: rgba(255,255,255,0.4); }
+    .header-badge { background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); border-radius: 10px; padding: 10px 18px; text-align: center; position: relative; z-index: 1; }
+    .badge-label { font-size: 11px; color: rgba(255,255,255,0.4); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+    .badge-value { font-size: 18px; font-weight: 900; color: #f87171; margin-top: 2px; }
+    .header-meta { margin-top: 24px; display: flex; gap: 32px; position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 20px; flex-wrap: wrap; }
+    .meta-item label { font-size: 11px; color: rgba(255,255,255,0.35); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 3px; }
+    .meta-item span { font-size: 14px; font-weight: 600; color: #fff; }
+
+    /* Body */
+    .report-body { padding: 40px; }
+
+    /* AI Model info bar */
+    .model-bar { background: #f0fffe; border: 1px solid #99f6e4; border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; display: flex; align-items: center; gap: 12px; }
+    .model-bar .model-icon { font-size: 22px; }
+    .model-bar p { font-size: 13px; color: #0f766e; line-height: 1.5; }
+    .model-bar strong { font-weight: 800; }
+
+    /* Prediction scores */
+    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; margin-bottom: 14px; }
+    .scores-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+    .score-card { border-radius: 12px; padding: 16px; text-align: center; border: 1px solid; }
+    .score-card.benign { background: #f0fdf4; border-color: #86efac; }
+    .score-card.light { background: #fefce8; border-color: #fde68a; }
+    .score-card.heavy { background: #fff1f2; border-color: #fca5a5; }
+    .score-card .sc-label { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+    .score-card .sc-val { font-size: 28px; font-weight: 900; }
+    .benign .sc-val { color: #16a34a; }
+    .light .sc-val { color: #ca8a04; }
+    .heavy .sc-val { color: #dc2626; }
+    .score-card .sc-bar { height: 6px; border-radius: 99px; margin-top: 8px; background: #e2e8f0; overflow: hidden; }
+    .score-card .sc-fill { height: 100%; border-radius: 99px; }
+    .benign .sc-fill { background: linear-gradient(90deg, #22c55e, #16a34a); width: 12.4%; }
+    .light .sc-fill { background: linear-gradient(90deg, #eab308, #ca8a04); width: 23.8%; }
+    .heavy .sc-fill { background: linear-gradient(90deg, #ef4444, #dc2626); width: 63.8%; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
+
+    /* Images */
+    .image-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    .img-card { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+    .img-label { padding: 10px 14px; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+    .img-box { height: 180px; background: #0f172a; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.25); font-size: 13px; }
+    .img-box.heatmap { background: linear-gradient(135deg, #0f172a, #1a0a0a); position: relative; overflow: hidden; }
+    .heatmap-overlay { position: absolute; inset: 0; background: radial-gradient(ellipse 50% 45% at 62% 38%, rgba(239,68,68,0.6), rgba(234,179,8,0.3) 45%, transparent 70%); }
+    .heatmap-label { position: absolute; bottom: 8px; left: 10px; background: rgba(0,0,0,0.6); color: #fca5a5; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+
+    /* Clinical narrative */
+    .narrative-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 28px; }
+    .narrative-section { margin-bottom: 20px; }
+    .narrative-section:last-child { margin-bottom: 0; }
+    .narrative-section h4 { font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #2dd4bf; display: inline-block; }
+    .narrative-section p { font-size: 14px; color: #475569; line-height: 1.7; }
+    .narrative-section ul { padding-left: 20px; margin-top: 6px; }
+    .narrative-section li { font-size: 14px; color: #475569; line-height: 1.8; }
+
+    /* Warning box */
+    .warning-box { background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 28px; }
+    .warning-box .wi { font-size: 20px; }
+    .warning-box p { font-size: 13px; color: #9a3412; line-height: 1.6; }
+
+    /* Signatures */
+    .sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .sig-box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+    .sig-box .sig-line { border-top: 1px solid #cbd5e1; margin-top: 32px; padding-top: 8px; font-size: 12px; color: #94a3b8; }
+    .sig-box .sig-name { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .sig-box .sig-role { font-size: 12px; color: #64748b; }
+
+    /* Footer */
+    .report-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #94a3b8; flex-wrap: wrap; gap: 8px; }
+
+    /* Print styles */
+    @media print {
+      .action-bar { display: none !important; }
+      body { background: #fff; }
+      .report-wrapper { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Action Bar -->
+<div class="action-bar">
+  <div class="logo">
+    <div class="logo-badge">M</div>
+    MammAI Clinical Report
+  </div>
+  <div class="btns">
+    <button class="btn-close" onclick="window.close()">✕ Close</button>
+    <button class="btn-print" onclick="window.print()">🖨 Download / Print PDF</button>
+  </div>
+</div>
+
+<!-- Report Document -->
+<div class="report-wrapper">
+
+  <!-- Header -->
+  <div class="report-header">
+    <div class="header-top">
+      <div>
+        <div class="report-title">MammAI · Parallel Dual-Stream AI Diagnostic Report</div>
+        <div class="report-id">RPT-2503-001</div>
+        <div class="report-sub">Generated: 22 March 2025, 18:30 IST</div>
+      </div>
+      <div class="header-badge">
+        <div class="badge-label">Primary Diagnosis</div>
+        <div class="badge-value">⚠ Heavily Malignant</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="meta-item"><label>Patient Name</label><span>Ananya Sharma</span></div>
+      <div class="meta-item"><label>Patient ID</label><span>PT-001</span></div>
+      <div class="meta-item"><label>Age</label><span>45 years</span></div>
+      <div class="meta-item"><label>Scan Date</label><span>20 March 2025</span></div>
+      <div class="meta-item"><label>Modality</label><span>Digital Mammography (CC + MLO)</span></div>
+      <div class="meta-item"><label>Attending Radiologist</label><span>Dr. Radiologist (DR-2025-001)</span></div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="report-body">
+
+    <!-- Model attribution -->
+    <div class="model-bar">
+      <div class="model-icon">🔬</div>
+      <p>Classification performed by <strong>your locally trained PyTorch Dual-Stream model (Swin-T v2 + RAD-DINO)</strong>. Model weights remain private. Clinical narrative generated by <strong>Gemini 1.5 Flash LLM</strong> based on numerical output only.</p>
+    </div>
+
+    <!-- Confidence Scores -->
+    <div class="section-title">AI Confidence Scores — 3-Class Softmax Output</div>
+    <div class="scores-grid">
+      <div class="score-card benign">
+        <div class="sc-label">0 — Benign</div>
+        <div class="sc-val">12.4%</div>
+        <div class="sc-bar"><div class="sc-fill"></div></div>
+      </div>
+      <div class="score-card light">
+        <div class="sc-label">1 — Lightly Malignant</div>
+        <div class="sc-val">23.8%</div>
+        <div class="sc-bar"><div class="sc-fill"></div></div>
+      </div>
+      <div class="score-card heavy">
+        <div class="sc-label">2 — Heavily Malignant</div>
+        <div class="sc-val">63.8%</div>
+        <div class="sc-bar"><div class="sc-fill"></div></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Images -->
+    <div class="section-title">AI Visual Analysis</div>
+    <div class="image-row">
+      <div class="img-card">
+        <div class="img-label">📷 Original Mammogram Input</div>
+        <div class="img-box" style="color:rgba(255,255,255,0.2); font-size:12px; flex-direction:column; gap:6px;">
+          <span style="font-size:32px">🩻</span>
+          <span>Preprocessed 224×224 Tensor</span>
+        </div>
+      </div>
+      <div class="img-card">
+        <div class="img-label">🔥 Grad-CAM Heatmap (Explainable AI)</div>
+        <div class="img-box heatmap">
+          <div class="heatmap-overlay"></div>
+          <div class="heatmap-label">🔴 High Activation Region</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Clinical Narrative -->
+    <div class="section-title">AI-Generated Clinical Summary (Gemini 1.5 Flash)</div>
+    <div class="narrative-box">
+      <div class="narrative-section">
+        <h4>Findings</h4>
+        <p>The parallel dual-stream AI model (Swin-T v2 + RAD-DINO) analyzed the submitted digital mammogram of the right breast in cranio-caudal (CC) and mediolateral oblique (MLO) projections. The Grad-CAM saliency maps reveal focal high-activation regions in the upper-outer quadrant consistent with architectural distortion and asymmetric hyperdense tissue patterns. Microcalcification clusters were noted as secondary findings.</p>
+      </div>
+      <div class="narrative-section">
+        <h4>Impression</h4>
+        <p>The AI ensemble model returns a <strong>Heavily Malignant</strong> classification with a confidence of <strong>63.8%</strong>. Both encoder streams (Swin-T and RAD-DINO) independently converge on this classification, which significantly strengthens the clinical weight of this finding.</p>
+      </div>
+      <div class="narrative-section">
+        <h4>Recommendations</h4>
+        <ul>
+          <li>Urgent radiologist review and confirmation is required.</li>
+          <li>Proceed with image-guided core needle biopsy to confirm histological malignancy.</li>
+          <li>Schedule contrast-enhanced MRI of bilateral breasts for full staging.</li>
+          <li>Multidisciplinary oncology team referral is strongly advised.</li>
+          <li>Notify patient and schedule follow-up within 72 hours.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Warning -->
+    <div class="warning-box">
+      <div class="wi">⚠️</div>
+      <p><strong>AI-Assisted Report — Requires Radiologist Validation:</strong> This report was generated by an artificial intelligence system and must be reviewed and countersigned by a licensed radiologist before clinical use. The AI output is intended to assist, not replace, the clinical judgement of the attending physician.</p>
+    </div>
+
+    <!-- Signatures -->
+    <div class="section-title">Authorization</div>
+    <div class="sig-row">
+      <div class="sig-box">
+        <div class="sig-line"></div>
+        <div class="sig-name">Dr. Radiologist</div>
+        <div class="sig-role">Attending Radiologist · DR-2025-001</div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-line"></div>
+        <div class="sig-name">MammAI Dual-Stream System</div>
+        <div class="sig-role">AI Model: Swin-T v2 + RAD-DINO · Report: Gemini 1.5 Flash</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="report-footer">
+    <span>MammAI · Parallel Dual-Stream Diagnostic Portal · For Clinical & Research Use Only</span>
+    <span>Report ID: RPT-2503-001 · Generated: 22 March 2025</span>
+  </div>
+
+</div>
+</body>
+</html>
