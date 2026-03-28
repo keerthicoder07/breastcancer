@@ -1,14 +1,19 @@
 import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Zap, Flame, BarChart2, FileText } from 'lucide-react'
+import { Upload, Zap, Flame, BarChart2, FileText, User } from 'lucide-react'
+import { analyzeImage, getPatients } from '../../lib/api'
 
 export default function DiagnosticsTab() {
-  const [file, setFile]       = useState(null)
-  const [preview, setPreview] = useState(null)
+  const [file, setFile]         = useState(null)
+  const [preview, setPreview]   = useState(null)
   const [dragging, setDragging] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState(null)
-  const [bars, setBars]       = useState({ b: 0, l: 0, h: 0 })
+  const [loading, setLoading]   = useState(false)
+  const [results, setResults]   = useState(null)
+  const [bars, setBars]         = useState({ b: 0, l: 0, h: 0 })
+  const [gradcamUrl, setGradcamUrl] = useState(null)
+  const [patients, setPatients] = useState([])
+  const [patientId, setPatientId] = useState('')
+  const [showPatients, setShowPatients] = useState(false)
   const inputRef = useRef()
 
   const loadFile = (f) => {
@@ -16,35 +21,37 @@ export default function DiagnosticsTab() {
     setFile(f)
     setPreview(URL.createObjectURL(f))
     setResults(null)
+    setGradcamUrl(null)
     setBars({ b: 0, l: 0, h: 0 })
   }
+
   const onDrop = useCallback(e => {
     e.preventDefault(); setDragging(false); loadFile(e.dataTransfer.files[0])
   }, [])
 
+  const loadPatients = async () => {
+    try {
+      const data = await getPatients()
+      setPatients(data)
+      setShowPatients(true)
+    } catch { setShowPatients(true) }
+  }
+
   const analyze = async () => {
     if (!file) return
-    setLoading(true); setResults(null)
-    const fd = new FormData(); fd.append('file', file)
+    setLoading(true); setResults(null); setGradcamUrl(null)
     try {
-      const res  = await fetch('/api/analyze', { method: 'POST', body: fd })
-      const data = await res.json()
+      const pid = patientId ? parseInt(patientId) : null
+      const data = await analyzeImage(file, pid)
       setResults(data)
+      if (data.gradcam_url) setGradcamUrl(data.gradcam_url)
       setTimeout(() => setBars({
         b: data.predictions.benign,
         l: data.predictions.lightly_malignant,
         h: data.predictions.heavily_malignant,
       }), 200)
-    } catch {
-      // Fallback mock
-      const mock = {
-        filename: file.name,
-        predictions: { benign: 12.4, lightly_malignant: 23.8, heavily_malignant: 63.8 },
-        dominant_class: 'Heavily Malignant',
-        llm_summary: mockReport('Heavily Malignant', 12.4, 23.8, 63.8),
-      }
-      setResults(mock)
-      setTimeout(() => setBars({ b: 12.4, l: 23.8, h: 63.8 }), 200)
+    } catch (err) {
+      console.error('Analysis failed:', err)
     }
     setLoading(false)
   }
@@ -70,7 +77,7 @@ export default function DiagnosticsTab() {
             <span className="text-3xl">🔬</span>
             <div>
               <div className="text-xs text-white/40 uppercase tracking-widest font-bold">Primary Diagnosis</div>
-              <div className={`text-2xl font-black ${domColor[dominant].split(' ')[0]}`}>{dominant}</div>
+              <div className={`text-2xl font-black ${domColor[dominant]?.split(' ')[0]}`}>{dominant}</div>
             </div>
             <div className="ml-auto text-right">
               <div className="text-xs text-white/40">Max Confidence</div>
@@ -115,6 +122,39 @@ export default function DiagnosticsTab() {
                 </div>
               )}
             </div>
+
+            {/* Patient selector */}
+            <div className="mt-3">
+              <button
+                onClick={loadPatients}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10
+                           text-xs text-white/50 hover:text-white/80 hover:border-white/20 transition-all"
+              >
+                <User size={13} />
+                {patientId ? `Patient ID: ${patientId}` : 'Link to Patient (optional)'}
+              </button>
+              {showPatients && (
+                <div className="mt-2 glass rounded-xl border border-white/10 max-h-32 overflow-y-auto">
+                  <div
+                    className="px-3 py-2 text-xs text-white/40 hover:bg-white/5 cursor-pointer"
+                    onClick={() => { setPatientId(''); setShowPatients(false) }}
+                  >
+                    — No patient link (anonymous)
+                  </div>
+                  {patients.map(p => (
+                    <div
+                      key={p.id}
+                      className="px-3 py-2 text-xs hover:bg-white/5 cursor-pointer flex justify-between"
+                      onClick={() => { setPatientId(String(p.id)); setShowPatients(false) }}
+                    >
+                      <span className="text-white/70">{p.name}</span>
+                      <span className="text-teal-400 font-mono">{p.patient_id_str}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <motion.button
               whileHover={file && !loading ? { scale: 1.02 } : {}}
               whileTap={file && !loading ? { scale: 0.98 } : {}}
@@ -169,7 +209,15 @@ export default function DiagnosticsTab() {
             <span className="tag text-xs px-2 py-0.5 rounded-full ml-auto">XAI</span>
           </h2>
           <div className="rounded-xl overflow-hidden bg-black border border-white/5 aspect-square flex items-center justify-center relative">
-            {results ? (
+            {gradcamUrl ? (
+              <>
+                <img src={gradcamUrl} alt="Grad-CAM" className="w-full h-full object-cover" />
+                <div className="absolute bottom-3 left-3">
+                  <div className="glass rounded-lg px-3 py-1.5 text-xs font-bold text-red-300">🔴 High Activation Detected</div>
+                </div>
+              </>
+            ) : results && !gradcamUrl ? (
+              /* Fallback overlay if grad-cam not available */
               <>
                 <img src={preview} alt="" className="w-full h-full object-cover"
                   style={{ filter: 'grayscale(.8) contrast(1.2)' }} />
@@ -281,11 +329,12 @@ export default function DiagnosticsTab() {
                 >
                   ⬇ Download .txt
                 </button>
-                <button onClick={() => window.open('/report.html', '_blank')}
-                  className="btn-primary text-xs px-4 py-2 rounded-xl">
-                  🖨 View PDF Report
-                </button>
               </div>
+            </div>
+            <div className="px-6 py-2">
+              {results.report_id && (
+                <p className="text-xs text-teal-400 font-mono mb-1">Report #{results.report_id} saved to database ✓</p>
+              )}
             </div>
             <textarea
               className="w-full h-56 bg-transparent px-6 py-5 text-white/70 font-mono text-sm leading-relaxed resize-y focus:outline-none"
@@ -298,23 +347,4 @@ export default function DiagnosticsTab() {
       </AnimatePresence>
     </div>
   )
-}
-
-function mockReport(dominant, b, l, h) {
-  return `PARALLEL DUAL-STREAM AI CLINICAL SUMMARY
-Model: Swin-T v2 + RAD-DINO (Your PyTorch Weights) | LLM: Gemini 1.5 Flash
-
-FINDINGS:
-The AI dual-stream system analyzed the submitted mammogram using your locally trained PyTorch model.
-Focal areas of architectural distortion were flagged by the Grad-CAM saliency map.
-
-IMPRESSION:
-Primary: ${dominant.toUpperCase()} | Benign: ${b}% | Lightly: ${l}% | Heavily: ${h}%
-
-RECOMMENDATIONS:
-1. ${dominant === 'Heavily Malignant' ? 'URGENT radiologist review required.' : 'Radiologist review recommended.'}
-2. ${dominant !== 'Benign' ? 'Proceed with core needle biopsy.' : 'Schedule 6-month follow-up screening.'}
-3. ${dominant === 'Heavily Malignant' ? 'Contrast MRI + oncology referral.' : 'Continue standard screening protocol.'}
-
-⚠ AI-assisted report only — final decision rests with the attending radiologist.`
 }

@@ -1,21 +1,29 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, AlertCircle, Shield } from 'lucide-react'
+import { loginUser } from '../lib/api'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [id, setId] = useState('DR-2025-001')
-  const [pw, setPw] = useState('mammAI@secure')
+  const [email, setEmail] = useState('')
+  const [pw, setPw] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (!email || !pw) { setError('Please enter email and password.'); return }
     setLoading(true)
-    // In production: validate against backend /auth/login
-    setTimeout(() => {
-      setLoading(false)
+    setError('')
+    try {
+      await loginUser(email, pw)
       navigate('/dashboard')
-    }, 1200)
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Invalid credentials. Please try again.'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -54,16 +62,29 @@ export default function Login() {
           className="glass rounded-3xl p-8 glow-teal border border-teal-400/20"
         >
           <div className="space-y-5">
+            {/* Error Banner */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+              >
+                <AlertCircle size={15} />
+                {error}
+              </motion.div>
+            )}
+
             <div>
               <label className="text-xs font-bold text-white/50 block mb-2 tracking-widest uppercase">
                 Medical ID
               </label>
               <input
-                value={id}
-                onChange={e => setId(e.target.value)}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-medium
                            focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/15 transition-all"
-                placeholder="DR-XXXX-XXX"
+                placeholder="doctor@hospital.com"
               />
             </div>
             <div>
@@ -95,10 +116,12 @@ export default function Login() {
             </button>
           </div>
 
-          {/* Demo hint */}
-          <div className="mt-5 p-4 rounded-xl bg-teal-400/5 border border-teal-400/20 text-center">
-            <p className="text-xs text-white/40 mb-1 font-bold tracking-widest uppercase">Demo Credentials</p>
-            <p className="text-xs text-teal-400 font-mono">DR-2025-001 / mammAI@secure</p>
+          <div className="mt-5 flex flex-col gap-3">
+            
+            {/* Admin Registration */}
+            <button onClick={() => navigate('/admin-register')} className="w-full py-3 rounded-xl border border-white/5 hover:border-teal-400/30 hover:bg-teal-400/5 text-white/40 hover:text-teal-400 transition-all text-sm flex items-center justify-center gap-2">
+              <Shield size={14} /> Hospital Admin: Register Staff
+            </button>
           </div>
         </motion.div>
 

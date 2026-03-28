@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Zap, BarChart2, Users, FileText, LogOut } from 'lucide-react'
+import { getCurrentUser } from '../lib/api'
 import ModelBanner from '../components/ModelBanner'
 import DiagnosticsTab from '../components/tabs/DiagnosticsTab'
 import AnalyticsTab from '../components/tabs/AnalyticsTab'
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const path = window.location.pathname
   const title = titles[path] || 'Diagnostic Dashboard'
+  const user = getCurrentUser() || { name: 'Dr. Radiologist', email: 'DR-2025-001' }
+  const initials = user.name.substring(0, 2).toUpperCase()
 
   return (
     <motion.div
@@ -36,7 +39,7 @@ export default function Dashboard() {
       style={{ background: '#0a0a0a' }}
     >
       {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 glass border-r border-white/5 flex flex-col">
+      <aside className="w-60 flex-shrink-0 glass border-r border-white/5 flex flex-col print:hidden">
         <div className="p-5 border-b border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -69,11 +72,11 @@ export default function Dashboard() {
           <div className="glass rounded-xl p-3 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm"
               style={{ background: 'linear-gradient(135deg,#2dd4bf,#d9f99d)', color: '#0a0a0a' }}>
-              DR
+              {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm truncate">Dr. Radiologist</div>
-              <div className="text-xs text-white/40">DR-2025-001</div>
+              <div className="font-bold text-sm truncate">{user.name}</div>
+              <div className="text-xs text-white/40 truncate">{user.email}</div>
             </div>
             <button
               onClick={() => navigate('/')}
@@ -87,9 +90,9 @@ export default function Dashboard() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ModelBanner />
-        <div className="glass border-b border-white/5 px-6 py-4 flex justify-between items-center">
+      <div className="flex-1 flex flex-col overflow-hidden print:overflow-visible">
+        <div className="print:hidden"><ModelBanner /></div>
+        <div className="glass border-b border-white/5 px-6 py-4 flex justify-between items-center print:hidden">
           <div>
             <h1 className="text-xl font-black">{title}</h1>
             <p className="text-white/40 text-sm">MammAI · Parallel Dual-Stream Portal</p>
